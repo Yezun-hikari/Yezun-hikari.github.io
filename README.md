@@ -11,4 +11,4 @@ At the time of writing this I'm also "working" on the tool or how to call this. 
 
 So yeah... <br/>
 
-###### That's me or so T_T <br/>  ![Strich](Stickman.png)
+###### That's me or so T_T <br/>
