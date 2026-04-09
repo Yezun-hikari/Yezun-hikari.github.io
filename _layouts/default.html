@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.title }}{% if page.title %} | {% endif %}Yezun</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        accent: '#8e9aaf',
+                        darkBg: '#121212',
+                        lightBg: '#fdfdfd',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:italic,wght@700&display=swap');
+
+        body { transition: background-color 0.5s ease; }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(15px);
+            transition: all 0.8s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .social-link {
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            transform: translateY(-3px);
+            opacity: 0.6;
+        }
+
+        .back-link {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .back-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 1px;
+            bottom: -2px;
+            left: 0;
+            background-color: #8e9aaf;
+            transition: width 0.3s ease;
+        }
+
+        .back-link:hover::after {
+            width: 100%;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #8e9aaf; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-lightBg text-zinc-800 dark:bg-darkBg dark:text-zinc-200 min-h-screen flex flex-col">
+
+    <!-- Header / Navigation -->
+    <header class="fixed w-full top-0 z-50 px-6 md:px-8 py-4 md:py-6 flex justify-between items-center mix-blend-difference">
+        <div class="text-base md:text-lg font-medium tracking-widest text-white">YEZUN</div>
+        <button id="theme-toggle" class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition-all">
+            <i id="theme-toggle-icon" class="fas fa-moon"></i>
+        </button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col items-center justify-start px-6 pt-[20vh] pb-32">
+        {{ content }}
+    </main>
+
+    <!-- Footer Area -->
+    <footer class="fixed bottom-0 w-full p-6 md:p-8 flex justify-center pointer-events-none mix-blend-difference z-50">
+        <div class="text-[8px] md:text-[9px] tracking-[0.3em] md:tracking-[0.5em] uppercase opacity-50 text-center text-white">
+            YEZUN_HIKARI — I‘M LIKE AN ORANGE CAT
+        </div>
+    </footer>
+
+    <script>
+        // Theme Toggle
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleIcon = document.getElementById('theme-toggle-icon');
+        const html = document.documentElement;
+
+        // Default to dark mode
+        if (localStorage.getItem('theme') !== 'light') {
+            html.classList.add('dark');
+            themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                themeToggleIcon.classList.replace('fa-sun', 'fa-moon');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
+            }
+        });
+
+        // Simple Fade-In on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            const elements = document.querySelectorAll('.fade-in');
+            elements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.classList.add('visible');
+                }, 200 * index);
+            });
+        });
+    </script>
+</body>
+</html>
