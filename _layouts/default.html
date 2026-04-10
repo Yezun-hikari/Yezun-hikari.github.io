@@ -83,9 +83,22 @@
 <body class="bg-lightBg text-zinc-800 dark:bg-darkBg dark:text-zinc-200 min-h-screen flex flex-col">
 
     <!-- Header / Navigation -->
-    <header class="fixed w-full top-0 z-50 px-6 md:px-8 py-4 md:py-6 flex justify-between items-center mix-blend-difference">
-        <div class="text-base md:text-lg font-medium tracking-widest text-white">YEZUN</div>
-        <button id="theme-toggle" class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition-all">
+    <header class="fixed w-full top-0 z-50 px-6 md:px-8 py-4 md:py-6 flex justify-between items-start mix-blend-difference">
+        <div class="flex flex-col items-start gap-4">
+            <button id="menu-toggle" class="flex items-center gap-3 text-white hover:opacity-60 transition-all group">
+                <i class="fas fa-bars text-lg"></i>
+                <span class="text-base md:text-lg font-medium tracking-widest">YEZUN</span>
+            </button>
+
+            <!-- Navigation Dropdown -->
+            <nav id="nav-dropdown" class="flex flex-col items-start gap-3 transition-all duration-300 opacity-0 pointer-events-none translate-y-[-10px]">
+                <a href="/" class="nav-link text-[10px] md:text-xs font-medium tracking-[0.4em] uppercase text-white hover:text-accent transition-all">Home</a>
+                <a href="/projects" class="nav-link text-[10px] md:text-xs font-medium tracking-[0.4em] uppercase text-white hover:text-accent transition-all">Projekte</a>
+                <a href="https://github.com/yezun-hikari" target="_blank" class="nav-link text-[10px] md:text-xs font-medium tracking-[0.4em] uppercase text-white hover:text-accent transition-all">GitHub</a>
+            </nav>
+        </div>
+
+        <button id="theme-toggle" class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10 transition-all mt-[-4px]">
             <i id="theme-toggle-icon" class="fas fa-moon"></i>
         </button>
     </header>
@@ -103,6 +116,36 @@
     </footer>
 
     <script>
+        // Navigation Toggle
+        const menuToggle = document.getElementById('menu-toggle');
+        const navDropdown = document.getElementById('nav-dropdown');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        function toggleMenu() {
+            const isOpen = !navDropdown.classList.contains('opacity-0');
+            if (isOpen) {
+                navDropdown.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+            } else {
+                navDropdown.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+            }
+        }
+
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!navDropdown.contains(e.target) && !menuToggle.contains(e.target)) {
+                navDropdown.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+            }
+        });
+
+        navLinks.forEach(link => link.addEventListener('click', () => {
+            navDropdown.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-10px]');
+        }));
+
         // Theme Toggle and Auto-detection
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeToggleIcon = document.getElementById('theme-toggle-icon');
