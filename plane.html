@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Flugsimulator Pro (Final Fix)</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/",
+            "firebase/app": "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js"
+        }
+    }
+    </script>
+    <style>
+        body {
+            margin: 0; overflow: hidden; background-color: #000;
+            font-family: monospace; touch-action: none; user-select: none;
+        }
+        canvas { display: block; }
+        
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column;
+            justify-content: space-between; z-index: 10;
+        }
+        
+        #player-list {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.6); padding: 10px;
+            border-radius: 8px; color: white; font-size: 14px;
+            pointer-events: auto; border-left: 3px solid #44ccff;
+            max-height: 200px; overflow-y: auto;
+        }
+        .player-item { display: flex; align-items: center; margin-bottom: 4px; }
+        .player-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 5px currentColor; }
+
+        #hud-top {
+            padding: 20px; text-align: center; color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+            pointer-events: auto;
+        }
+        #controls-hint { font-size: 12px; color: #aaa; margin-top: 5px; }
+        #stats { color: #88ff88; font-weight: bold; margin-top: 5px; font-size: 18px; }
+        #mp-status { color: #44ccff; font-size: 14px; margin-top: 5px; }
+
+        #comms-panel {
+            position: absolute; top: 100px; right: 20px;
+            width: 320px; pointer-events: auto;
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        }
+        #rook-status {
+            display: flex; align-items: center; background: rgba(0, 30, 0, 0.9);
+            border: 1px solid #44ff44; border-radius: 30px; padding: 5px 15px;
+            margin-bottom: 5px; display: none;
+        }
+        #rook-icon {
+            width: 12px; height: 12px; border-radius: 50%; background-color: #444;
+            margin-right: 10px; box-shadow: 0 0 5px #000;
+        }
+        #rook-icon.speaking {
+            background-color: #44ff44; box-shadow: 0 0 15px #44ff44;
+            animation: pulse-speak 0.5s infinite alternate;
+        }
+        @keyframes pulse-speak { from { opacity: 0.6; } to { opacity: 1.0; transform: scale(1.2); } }
+        #comms-log {
+            background: rgba(0, 20, 0, 0.85); border: 1px solid #2a5; border-radius: 5px;
+            padding: 15px; margin-top: 5px; width: 100%; min-height: 60px;
+            display: none; flex-direction: column; justify-content: center;
+            font-size: 13px; color: #aaffaa; text-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        .log-entry.rook { color: #aaffaa; font-weight: bold; }
+        .log-entry.system { color: #888888; font-style: italic; }
+
+        #start-screen, #crash-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+            pointer-events: auto; color: white;
+        }
+        #crash-screen { display: none; background: rgba(50, 0, 0, 0.85); }
+        
+        button {
+            padding: 20px 40px; font-size: 24px; background: #228B22; color: white;
+            border: none; border-radius: 8px; cursor: pointer; margin-top: 20px;
+            box-shadow: 0 0 20px rgba(50, 205, 50, 0.5); transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.95); }
+        
+        #joystick-area {
+            position: absolute; bottom: 40px; left: 40px;
+            width: 120px; height: 120px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%; z-index: 100;
+            display: none; pointer-events: auto; touch-action: none;
+        }
+        #joystick-knob {
+            position: absolute; width: 50px; height: 50px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border-radius: 50%; left: 35px; top: 35px;
+            pointer-events: none;
+        }
+        /* Show joystick only on touch devices */
+        body.is-touch #joystick-area { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="player-list">Warte auf Verbindung...</div>
+
+        <div id="hud-top">
+            <div id="stats">System Check...</div>
+            <div id="controls-hint">Space: Schub | Shift: Bremsen | E: Rückspiegel</div>
+            <div id="mp-status">Verbinde mit Multiplayer Server...</div>
+        </div>
+
+        <div id="comms-panel">
+            <div id="rook-status">
+                <div id="rook-icon"></div>
+                <div id="rook-text">Rook (Co-Pilot)</div>
+            </div>
+            <div id="comms-log"></div>
+        </div>
+    </div>
+
+    <div id="start-screen">
+        <h1>FLUGSIMULATOR ULTRA</h1>
+        <div style="margin-bottom:20px; text-align:center; color:#aaa;">Lade Rook AI & Netzwerk...</div>
+        <button id="start-btn" style="display:none">STARTEN</button>
+    </div>
+
+    <div id="crash-screen">
+        <h1>ABGESTÜRZT!</h1>
+        <div id="crash-report" style="margin:20px; max-width:600px; font-family:monospace; color:#fb8;"></div>
+        <button id="restart-btn" style="display:none">NEUSTART</button>
+    </div>
+
+    <div id="joystick-area"><div id="joystick-knob"></div></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { Sky } from 'three/addons/objects/Sky.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { initializeApp } from 'firebase/app';
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, serverTimestamp } from 'firebase/firestore';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+
+        // --- CENTRAL GAME STATE (Solves Reference Errors) ---
+        const game = {
+            running: false,
+            crashed: false,
+            speed: 120.0,
+            targetSpeed: 120.0,
+            roll: 0, pitch: 0, yaw: 0,
+            targetRoll: 0, targetPitch: 0
+        };
+
+        // --- CONFIG ---
+        const apiKey = ""; 
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const CONSTANTS = { STD: 120.0, MAX: 250.0, MIN: 60.0, STALL: 100.0 };
+
+        // --- VARS ---
+        let db, auth, currentUser;
+        let otherPlayers = {}; 
+        let myPlaneModel = null; 
+        let scene, camera, renderer, plane, sky, waterMesh;
+        let propellers = [];
+        const clock = new THREE.Clock();
+        const keys = { w: false, s: false, a: false, d: false, space: false, shift: false, e: false };
+        const inputs = { x: 0, y: 0 };
+
+        // --- AUTH ---
+        if (firebaseConfig.apiKey) {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Auth Error:", error);
+                    document.getElementById('mp-status').innerText = "Auth Fehler";
+                }
+            };
+            initAuth();
+        }
+
+        function getColorFromId(id) {
+            let hash = 0;
+            for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return '#' + "00000".substring(0, 6 - c.length) + c;
+        }
+
+        // --- MULTIPLAYER ---
+        class MultiplayerManager {
+            constructor() {
+                this.lastUpdate = 0;
+                this.updateRate = 80; 
+                this.isConnected = false;
+                this.playerListEl = document.getElementById('player-list');
+            }
+
+            init() {
+                if (!auth) return;
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        this.isConnected = true;
+                        document.getElementById('mp-status').innerText = `Online: Pilot-${user.uid.substr(0,4)}`;
+                        document.getElementById('start-btn').style.display = 'block';
+                        this.startListening();
+                        this.updateUIList();
+                    }
+                });
+            }
+
+            updateMyPosition(position, quaternion, speed) {
+                if (!this.isConnected || !currentUser || game.crashed) return;
+                const now = Date.now();
+                if (now - this.lastUpdate < this.updateRate) return;
+
+                const playerRef = doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid);
+                setDoc(playerRef, {
+                    x: position.x, y: position.y, z: position.z,
+                    qx: quaternion.x, qy: quaternion.y, qz: quaternion.z, qw: quaternion.w,
+                    speed: speed,
+                    lastSeen: serverTimestamp()
+                }, { merge: true }).catch(()=>{});
+                this.lastUpdate = now;
+            }
+            
+            getSpawnPoint() {
+                const ids = Object.keys(otherPlayers);
+                if(ids.length === 0) return null;
+                const rId = ids[Math.floor(Math.random() * ids.length)];
+                const p = otherPlayers[rId];
+                return p.targetPos.clone().add(new THREE.Vector3(50, 50, 50));
+            }
+
+            startListening() {
+                if (!db) return;
+                const playersRef = collection(db, 'artifacts', appId, 'public', 'data', 'players');
+                onSnapshot(playersRef, (snapshot) => {
+                    const now = Date.now();
+                    let listChanged = false;
+                    
+                    snapshot.docChanges().forEach((change) => {
+                        const pid = change.doc.id;
+                        if (pid === currentUser.uid) return; 
+
+                        if (change.type === "added" || change.type === "modified") {
+                            const data = change.doc.data();
+                            if(data.lastSeen && (now - data.lastSeen.toMillis()) > 20000) {
+                                if(otherPlayers[pid]) { this.removePlayer(pid); listChanged = true; }
+                                return;
+                            }
+                            if (!otherPlayers[pid]) {
+                                this.createOtherPlayer(pid, data);
+                                listChanged = true;
+                            } else {
+                                const p = otherPlayers[pid];
+                                p.targetPos.set(data.x, data.y, data.z);
+                                p.targetQuat.set(data.qx, data.qy, data.qz, data.qw);
+                                p.speed = data.speed;
+                                p.lastUpdate = now;
+                            }
+                        }
+                        if (change.type === "removed") {
+                            this.removePlayer(pid);
+                            listChanged = true;
+                        }
+                    });
+                    if(listChanged) this.updateUIList();
+                });
+            }
+
+            updateUIList() {
+                if(!currentUser) return;
+                let html = `<div class="player-item" style="color:#8f8"><div class="player-dot" style="background:#8f8"></div>YOU</div>`;
+                for(let pid in otherPlayers) {
+                    const color = otherPlayers[pid].color;
+                    html += `<div class="player-item" style="color:${color}"><div class="player-dot" style="background:${color}"></div>Pilot-${pid.substr(0,4)}</div>`;
+                }
+                this.playerListEl.innerHTML = html;
+            }
+
+            createOtherPlayer(pid, data) {
+                if(!scene) return;
+                let mesh;
+                if (myPlaneModel) {
+                    mesh = myPlaneModel.clone();
+                    const color = getColorFromId(pid);
+                    const outlineMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.BackSide, depthTest: false, depthWrite: false, transparent: true, opacity: 0.7 });
+                    mesh.traverse(child => {
+                        if(child.isMesh) {
+                            const outlineMesh = new THREE.Mesh(child.geometry, outlineMat);
+                            outlineMesh.scale.set(1.05, 1.05, 1.05);
+                            child.add(outlineMesh);
+                        }
+                    });
+                } else {
+                    const geo = new THREE.BoxGeometry(5, 2, 10);
+                    const mat = new THREE.MeshBasicMaterial({color: getColorFromId(pid), wireframe: true});
+                    mesh = new THREE.Mesh(geo, mat);
+                }
+                
+                const group = new THREE.Group();
+                group.add(mesh);
+                group.position.set(data.x, data.y, data.z);
+                scene.add(group);
+                
+                otherPlayers[pid] = {
+                    mesh: group,
+                    color: getColorFromId(pid),
+                    targetPos: new THREE.Vector3(data.x, data.y, data.z),
+                    targetQuat: new THREE.Quaternion(data.qx, data.qy, data.qz, data.qw),
+                    speed: data.speed,
+                    lastUpdate: Date.now()
+                };
+            }
+
+            removePlayer(pid) {
+                if (otherPlayers[pid]) {
+                    scene.remove(otherPlayers[pid].mesh);
+                    delete otherPlayers[pid];
+                }
+            }
+
+            updateRemotePlanes(dt) {
+                const now = Date.now();
+                let listChanged = false;
+                for (const pid in otherPlayers) {
+                    const p = otherPlayers[pid];
+                    p.mesh.position.lerp(p.targetPos, 5 * dt);
+                    p.mesh.quaternion.slerp(p.targetQuat, 5 * dt);
+                    p.mesh.traverse(n => { if (n.name.includes('Prop')) n.rotation.x += 15 * dt * (p.speed/10); });
+                    if (now - p.lastUpdate > 15000) { this.removePlayer(pid); listChanged = true; }
+                }
+                if(listChanged) this.updateUIList();
+            }
+        }
+
+        // --- ROOK ---
+        class AICopilot {
+            constructor() {
+                this.isSpeaking = false;
+                this.logEl = document.getElementById('comms-log');
+                this.rookIcon = document.getElementById('rook-icon');
+                this.rookStatus = document.getElementById('rook-status');
+                this.audioContext = null;
+                this.isActive = false;
+                this.nextTalk = 0;
+            }
+            initAudio() {
+                if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if(this.audioContext.state === 'suspended') this.audioContext.resume();
+            }
+            start() {
+                this.isActive = true; 
+                this.rookStatus.style.display = 'flex';
+                this.initAudio();
+                this.updateDisplay("System online.", "system");
+                this.nextTalk = performance.now() + 5000;
+            }
+            async generateAudioOnly(prompt, voiceName="Fenrir") {
+                try {
+                    const textResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const textData = await textResp.json();
+                    const text = textData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!text) return null;
+                    const ttsResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Sag auf Deutsch: ${text}` }] }],
+                        generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceName } } } },
+                        model: "gemini-2.5-flash-preview-tts"
+                    })});
+                    if (!ttsResp.ok) return null;
+                    const ttsData = await ttsResp.json();
+                    const base64 = ttsData.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                    if (base64) { return { text: text, buffer: await this.decodePCM(base64) }; }
+                    return null;
+                } catch(e) { return null; }
+            }
+            async decodePCM(base64String) {
+                if(!this.audioContext) this.initAudio();
+                const binaryString = atob(base64String);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+                const int16Data = new Int16Array(bytes.buffer);
+                const float32Data = new Float32Array(int16Data.length);
+                for(let i = 0; i < int16Data.length; i++) float32Data[i] = int16Data[i] / 32768.0;
+                const buffer = this.audioContext.createBuffer(1, float32Data.length, 24000);
+                buffer.copyToChannel(float32Data, 0); return buffer;
+            }
+            async playClip(clip) {
+                if (!clip || this.isSpeaking) return;
+                this.isSpeaking = true;
+                this.updateDisplay("ROOK: " + clip.text, "rook");
+                this.rookIcon.classList.add('speaking');
+                if(!this.audioContext) this.initAudio();
+                const source = this.audioContext.createBufferSource(); 
+                source.buffer = clip.buffer;
+                const gain = this.audioContext.createGain(); 
+                gain.gain.value = 1.5;
+                source.connect(gain); gain.connect(this.audioContext.destination);
+                source.onended = () => { this.isSpeaking = false; this.rookIcon.classList.remove('speaking'); };
+                source.start(0);
+            }
+            updateDisplay(text, type) {
+                this.logEl.style.display = 'flex'; this.logEl.innerHTML = '';
+                const entry = document.createElement('div'); entry.className = `log-entry ${type}`; entry.innerText = text;
+                this.logEl.appendChild(entry);
+            }
+            async update(telemetry) {
+                if (!this.isActive || game.crashed || this.isSpeaking) return;
+                const now = performance.now();
+                if (now > this.nextTalk) {
+                    this.nextTalk = now + 15000 + Math.random() * 10000;
+                    let prompt = "";
+                    if (telemetry.collisionRisk) prompt = "Panik wegen Kollision! Kurz.";
+                    else if (telemetry.speed < 100) prompt = "Warnung! Zu langsam! Strömungsabriss! Kurz.";
+                    else prompt = "Sarkastischer Kommentar zur Flugkunst. Kurz.";
+                    const clip = await this.generateAudioOnly(prompt);
+                    if(clip) this.playClip(clip);
+                }
+            }
+        }
+
+        // --- SFX ---
+        class ProceduralAudioSystem {
+            constructor() { this.isInitialized = false; }
+            init() {
+                if (this.isInitialized) return;
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.ctx.createGain(); this.masterGain.gain.value = 0.4; this.masterGain.connect(this.ctx.destination);
+                this.setupEngine(); this.setupWind(); this.isInitialized = true;
+            }
+            resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+            setupEngine() {
+                this.engineOsc = this.ctx.createOscillator(); this.engineOsc.type = 'sawtooth'; this.engineOsc.frequency.value = 60;
+                this.engineFilter = this.ctx.createBiquadFilter(); this.engineFilter.type = 'lowpass'; this.engineFilter.Q.value = 1.0;
+                this.engineGain = this.ctx.createGain(); this.engineGain.gain.value = 0.1;
+                this.engineOsc.connect(this.engineFilter); this.engineFilter.connect(this.engineGain); this.engineGain.connect(this.masterGain);
+                this.engineOsc.start();
+            }
+            updateEngine(speedFactor) {
+                if (!this.ctx) return; const t = this.ctx.currentTime;
+                this.engineOsc.frequency.setTargetAtTime(60 + (speedFactor * 100), t, 0.1);
+                this.engineFilter.frequency.setTargetAtTime(200 + (speedFactor * 600), t, 0.1);
+                this.engineGain.gain.setTargetAtTime(0.1 + (Math.min(speedFactor, 1.0) * 0.1), t, 0.1);
+            }
+            createPinkNoiseBuffer() {
+                const bs = this.ctx.sampleRate * 2; const buf = this.ctx.createBuffer(1, bs, this.ctx.sampleRate);
+                const d = buf.getChannelData(0); let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+                for (let i = 0; i < bs; i++) {
+                    const w = Math.random() * 2 - 1;
+                    b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759; b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856; b4 = 0.55000*b4 + w*0.5329522; b5 = -0.7616*b5 - w*0.0168980;
+                    d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11; b6 = w*0.115926;
+                } return buf;
+            }
+            setupWind() {
+                this.windBS = this.ctx.createBufferSource(); this.windBS.buffer = this.createPinkNoiseBuffer(); this.windBS.loop = true;
+                this.windF = this.ctx.createBiquadFilter(); this.windF.type = 'lowpass';
+                this.windG = this.ctx.createGain(); this.windG.gain.value = 0;
+                this.windBS.connect(this.windF); this.windF.connect(this.windG); this.windG.connect(this.masterGain); this.windBS.start();
+            }
+            updateWind(speedFactor) {
+                if (!this.ctx) return; const t = this.ctx.currentTime;
+                this.windG.gain.setTargetAtTime(Math.min(speedFactor * 0.4, 0.8), t, 0.2);
+                this.windF.frequency.setTargetAtTime(100 + (speedFactor * 1000), t, 0.2);
+            }
+            triggerCrash() {
+                if (!this.ctx) return; const t = this.ctx.currentTime;
+                this.engineGain.gain.setTargetAtTime(0, t, 0.05); this.windG.gain.setTargetAtTime(0, t, 0.05);
+                const ng = this.ctx.createGain(); ng.gain.setValueAtTime(2.0, t); ng.gain.exponentialRampToValueAtTime(0.01, t + 2.0);
+                const src = this.ctx.createBufferSource(); src.buffer = this.createPinkNoiseBuffer();
+                src.connect(ng); ng.connect(this.masterGain); src.start(t); src.stop(t + 2.5);
+            }
+            resetSound() { if(this.ctx) this.engineGain.gain.setTargetAtTime(0.1, this.ctx.currentTime, 1.0); }
+        }
+
+        const mpManager = new MultiplayerManager();
+        const rook = new AICopilot();
+        const audioSys = new ProceduralAudioSystem();
+
+        // --- TERRAIN ---
+        const chunkSize = 400, segments = 24, renderDistance = 7, terrainHeightScale = 400, waterLevel = -80;
+        const chunks = new Map(); const perlin = new ImprovedNoise(); let currentChunkCoords = { x: 0, z: 0 };
+
+        function ImprovedNoise(){const p=[151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];for(let i=0;i<256;i++)p[256+i]=p[i];function fade(t){return t*t*t*(t*(t*6-15)+10);}function lerp(t,a,b){return a+t*(b-a);}function grad(hash,x,y,z){const h=hash&15;const u=h<8?x:y,v=h<4?y:(h==12||h==14?x:z);return((h&1)==0?u:-u)+((h&2)==0?v:-v);}this.noise=function(x,y,z){const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);const u=fade(x),v=fade(y),w=fade(z);const A=p[X]+Y,AA=p[A]+Z,AB=p[A+1]+Z,B=p[X+1]+Y,BA=p[B]+Z,BB=p[B+1]+Z;return lerp(w,lerp(v,lerp(u,grad(p[AA],x,y,z),grad(p[BA],x-1,y,z)),lerp(u,grad(p[AB],x,y-1,z),grad(p[BB],x-1,y-1,z))),lerp(v,lerp(u,grad(p[AA+1],x,y,z-1),grad(p[BA+1],x-1,y,z-1)),lerp(u,grad(p[AB+1],x,y-1,z-1),grad(p[BB+1],x-1,y-1,z-1))));};}
+        function getTerrainHeight(x, z) {
+            let n = perlin.noise(x*0.0025, z*0.0025, 0)*1.0 + perlin.noise(x*0.005, z*0.005, 0)*0.5;
+            let h = Math.pow(Math.abs(n), 1.2) * terrainHeightScale; if(n<0) h = -h*0.2; return h;
+        }
+
+        function init() {
+            if('ontouchstart' in window) document.body.classList.add('is-touch');
+            scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x87CEEB, 500, 3500);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 10000);
+            renderer = new THREE.WebGLRenderer({antialias:true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.body.appendChild(renderer.domElement);
+            
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8); scene.add(hemi);
+            const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(100,200,-100); dir.castShadow = true;
+            dir.shadow.camera.top = 500; dir.shadow.camera.bottom = -500; dir.shadow.camera.left = -500; dir.shadow.camera.right = 500;
+            dir.shadow.mapSize.width = 2048; dir.shadow.mapSize.height = 2048; scene.add(dir);
+            
+            sky = new Sky(); sky.scale.setScalar(20000); scene.add(sky);
+            const sun = new THREE.Vector3(); sky.material.uniforms['turbidity'].value = 8; sky.material.uniforms['rayleigh'].value = 2;
+            sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(70), THREE.MathUtils.degToRad(180));
+            sky.material.uniforms['sunPosition'].value.copy(sun); dir.position.copy(sun).multiplyScalar(500);
+
+            const wGeo = new THREE.PlaneGeometry(10000, 10000); const wMat = new THREE.MeshLambertMaterial({color:0x0055a4, transparent:true, opacity:0.8});
+            waterMesh = new THREE.Mesh(wGeo, wMat); waterMesh.rotation.x = -Math.PI/2; waterMesh.position.y = waterLevel; scene.add(waterMesh);
+
+            createAirplane(); addListeners(); mpManager.init(); animate();
+        }
+
+        function createAirplane() {
+            plane = new THREE.Group();
+            const loader = new GLTFLoader();
+            loader.load('https://rawcdn.githack.com/CesiumGS/cesium/master/Apps/SampleData/models/CesiumAir/Cesium_Air.glb', (gltf)=>{
+                const m = gltf.scene;
+                myPlaneModel = m.clone(); 
+                m.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;} if(n.name.includes('Prop')) propellers.push(n);});
+                m.rotation.y = Math.PI;
+                plane.add(m); scene.add(plane);
+            });
+        }
+
+        function generateChunk(cx, cz) {
+            const geo = new THREE.PlaneGeometry(chunkSize, chunkSize, segments, segments); const pos = geo.attributes.position.array; const colors = []; const c = new THREE.Color();
+            const ox = cx*chunkSize, oz = cz*chunkSize;
+            for(let i=0; i<pos.length; i+=3) {
+                const wx = ox + pos[i], wz = oz - pos[i+1]; const h = getTerrainHeight(wx, wz); pos[i+2] = h;
+                if(h < waterLevel+10) c.setHex(0xEEDDAA); else if(h < waterLevel+80) c.setHex(0x228B22); else if(h < waterLevel+200) c.setHex(0x556B2F); else c.setHex(0x888888);
+                colors.push(c.r, c.g, c.b);
+            }
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); geo.computeVertexNormals();
+            const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({vertexColors:true, flatShading:true}));
+            mesh.position.set(ox, 0, oz); mesh.rotation.x = -Math.PI/2; mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh); return mesh;
+        }
+
+        function updateTerrain() {
+            const cx = Math.round(plane.position.x/chunkSize), cz = Math.round(plane.position.z/chunkSize);
+            if(cx === currentChunkCoords.x && cz === currentChunkCoords.z && chunks.size > 0) return;
+            currentChunkCoords = {x:cx, z:cz};
+            const keepKeys = new Set();
+            for(let x = -renderDistance; x <= renderDistance; x++) {
+                for(let z = -renderDistance; z <= renderDistance; z++) {
+                    const key = `${cx+x}_${cz+z}`; keepKeys.add(key);
+                    if(!chunks.has(key)) chunks.set(key, generateChunk(cx+x, cz+z));
+                }
+            }
+            for (const [key, mesh] of chunks) { if (!keepKeys.has(key)) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); chunks.delete(key); } }
+        }
+
+        function updateFlight(dt) {
+            if(game.crashed) return;
+            if(!document.getElementById('joystick-area').offsetParent) { 
+                inputs.x = (keys.d?1:0)-(keys.a?1:0); 
+                inputs.y = (keys.s?1:0)-(keys.w?1:0); 
+            }
+            
+            // SPEED & STALL
+            if (keys.space) game.targetSpeed = CONSTANTS.MAX;
+            else if (keys.shift) game.targetSpeed = CONSTANTS.MIN;
+            else game.targetSpeed = CONSTANTS.STD;
+
+            game.speed = THREE.MathUtils.lerp(game.speed, game.targetSpeed, 1.0 * dt);
+
+            let gravityDrop = 0;
+            let noseDrop = 0;
+            if (game.speed < CONSTANTS.STALL) {
+                const factor = (CONSTANTS.STALL - game.speed) / CONSTANTS.STALL;
+                gravityDrop = factor * 80.0 * dt;
+                noseDrop = factor * 2.0 * dt; 
+            }
+
+            game.targetRoll = -inputs.x*0.8; 
+            
+            if (game.speed < CONSTANTS.STALL) {
+                game.targetPitch -= noseDrop; 
+            } else {
+                game.targetPitch = inputs.y*0.5;
+            }
+
+            game.roll = THREE.MathUtils.lerp(game.roll, game.targetRoll, 2.5*dt);
+            game.pitch = THREE.MathUtils.lerp(game.pitch, game.targetPitch, 1.5*dt);
+            if(Math.abs(inputs.x)<0.01) game.roll = THREE.MathUtils.lerp(game.roll, 0, 1.0*dt);
+            game.yaw += game.roll * 0.8 * dt;
+            
+            const rot = new THREE.Euler(game.pitch, game.yaw, game.roll, 'YXZ');
+            plane.quaternion.setFromEuler(rot);
+            
+            const moveVec = new THREE.Vector3(0,0,-1).applyQuaternion(plane.quaternion).multiplyScalar(game.speed*dt);
+            moveVec.y -= gravityDrop;
+            plane.position.add(moveVec);
+            
+            const h = getTerrainHeight(plane.position.x, plane.position.z);
+            const alt = plane.position.y - Math.max(h, waterLevel);
+            const risk = (alt < 50 && game.speed > 100);
+
+            document.getElementById('stats').innerText = `ALT: ${Math.round(alt)}m | SPD: ${Math.round(game.speed)}`;
+            if(game.speed < CONSTANTS.STALL) document.getElementById('stats').innerText += " !! STALL !!";
+            
+            const speedFac = (game.speed/120)*(1.0-game.pitch*0.5);
+            audioSys.updateEngine(speedFac); audioSys.updateWind(speedFac);
+            
+            rook.update({pitch: Math.round(game.pitch*57), speed: game.speed, collisionRisk: risk});
+            mpManager.updateMyPosition(plane.position, plane.quaternion, game.speed);
+            mpManager.updateRemotePlanes(dt);
+            if(plane.position.y < Math.max(h, waterLevel)+2) handleCrash();
+        }
+
+        function handleCrash() {
+            game.crashed = true; 
+            audioSys.triggerCrash();
+            document.getElementById('crash-screen').style.display = 'flex';
+            document.getElementById('restart-btn').style.display = 'block';
+            rook.generateAudioOnly("Das war schmerzhaft. Totalschaden.", "Kore").then(c => {if(c) rook.playClip(c)});
+        }
+
+        function resetGame() {
+            const spawn = mpManager.getSpawnPoint();
+            if(spawn) { plane.position.copy(spawn); game.yaw = Math.random() * Math.PI * 2; }
+            else { plane.position.set(0, 300, 0); game.yaw = 0; }
+            game.pitch=0; game.roll=0; game.speed = CONSTANTS.STD; game.targetSpeed = CONSTANTS.STD;
+            game.crashed = false; 
+            audioSys.resetSound(); 
+            document.getElementById('crash-screen').style.display = 'none';
+            chunks.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
+            chunks.clear(); currentChunkCoords = {x:-999, z:-999}; updateTerrain();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            if(game.running) {
+                updateFlight(dt);
+                updateTerrain();
+                propellers.forEach(p => p.rotation.x += 15*dt*game.speed/10);
+                sky.position.copy(plane.position); waterMesh.position.x=plane.position.x; waterMesh.position.z=plane.position.z;
+                
+                let target;
+                if (keys.e) {
+                    const relOff = new THREE.Vector3(0, 10, -40); 
+                    const camRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), game.yaw);
+                    target = plane.position.clone().add(relOff.applyQuaternion(camRot));
+                } else {
+                    const relOff = new THREE.Vector3(0, 5, 12);
+                    const camRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), game.yaw);
+                    target = plane.position.clone().add(relOff.applyQuaternion(camRot));
+                }
+                camera.position.lerp(target, 10*dt); camera.lookAt(plane.position);
+            }
+            renderer.render(scene, camera);
+        }
+
+        function addListeners() {
+            window.addEventListener('resize', ()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+            
+            document.addEventListener('keydown', e=>{
+                if(e.code==='KeyW') keys.w=true; if(e.code==='KeyS') keys.s=true; if(e.code==='KeyA') keys.a=true; if(e.code==='KeyD') keys.d=true;
+                if(e.code==='Space') keys.space=true; if(e.key==='Shift') keys.shift=true; if(e.code==='KeyE') keys.e=true;
+            });
+            document.addEventListener('keyup', e=>{
+                if(e.code==='KeyW') keys.w=false; if(e.code==='KeyS') keys.s=false; if(e.code==='KeyA') keys.a=false; if(e.code==='KeyD') keys.d=false;
+                if(e.code==='Space') keys.space=false; if(e.key==='Shift') keys.shift=false; if(e.code==='KeyE') keys.e=false;
+            });
+            const joy=document.getElementById('joystick-area'), knob=document.getElementById('joystick-knob');
+            let jx=0, jy=0;
+            joy.addEventListener('touchstart', e=>{ e.preventDefault(); const r=joy.getBoundingClientRect(); jx=r.left+60; jy=r.top+60; });
+            joy.addEventListener('touchmove', e=>{
+                e.preventDefault();
+                const t=e.touches[0], dx=t.clientX-jx, dy=t.clientY-jy;
+                const d=Math.min(Math.sqrt(dx*dx+dy*dy), 35);
+                const a=Math.atan2(dy, dx);
+                knob.style.transform=`translate(${Math.cos(a)*d}px, ${Math.sin(a)*d}px)`;
+                inputs.x = (Math.cos(a)*d)/35; inputs.y = (Math.sin(a)*d)/35;
+            });
+            joy.addEventListener('touchend', ()=>{ knob.style.transform=''; inputs.x=0; inputs.y=0; });
+            
+            document.getElementById('start-btn').onclick = () => {
+                document.getElementById('start-screen').style.display='none';
+                audioSys.init(); audioSys.resume(); rook.start(); 
+                game.running = true; resetGame();
+            };
+            document.getElementById('restart-btn').onclick = resetGame;
+        }
+
+        init();
+    </script>
+</body>
+</html>
