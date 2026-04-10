@@ -7,6 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
+        // Initial theme detection
+        if (!window.matchMedia('(prefers-color-scheme: light)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -98,27 +103,39 @@
     </footer>
 
     <script>
-        // Theme Toggle
+        // Theme Toggle and Auto-detection
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeToggleIcon = document.getElementById('theme-toggle-icon');
         const html = document.documentElement;
+        let manualOverride = false;
 
-        // Default to dark mode
-        if (localStorage.getItem('theme') !== 'light') {
-            html.classList.add('dark');
+        function setTheme(isDark) {
+            if (isDark) {
+                html.classList.add('dark');
+                themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                html.classList.remove('dark');
+                themeToggleIcon.classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+
+        // Initialize icon based on current state (set in head)
+        if (html.classList.contains('dark')) {
             themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
         }
 
-        themeToggleBtn.addEventListener('click', () => {
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-                themeToggleIcon.classList.replace('fa-sun', 'fa-moon');
-            } else {
-                html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-                themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
+        // Watch for system changes
+        const mq = window.matchMedia('(prefers-color-scheme: light)');
+        mq.addEventListener('change', (e) => {
+            if (!manualOverride) {
+                setTheme(!e.matches);
             }
+        });
+
+        themeToggleBtn.addEventListener('click', () => {
+            manualOverride = true;
+            const isCurrentlyDark = html.classList.contains('dark');
+            setTheme(!isCurrentlyDark);
         });
 
         // Simple Fade-In on Load
