@@ -7,3 +7,11 @@ projects:
     link: https://github.com/Yezun-hikari/Yezun-hikari/tree/web
     link_text: Repository ansehen
     active: true
+  - icon: fa-brands fa-github
+    link_text: Repository ansehen
+    active: true
+    title: School Text Adventure
+    description: Ein einfaches Text-Adventure in Python, das ich für die Schule
+      programmiert habe.
+    image: /assets/images/projects/screenshot-2026-04-12-183005.png
+    link: https://github.com/Yezun-hikari/School-Text-Adventure
