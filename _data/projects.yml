@@ -15,3 +15,11 @@ projects:
       programmiert habe.
     image: /assets/images/projects/screenshot-2026-04-12-183005.png
     link: https://github.com/Yezun-hikari/School-Text-Adventure
+  - icon: fab fa-discord
+    link_text: Server ansehen
+    active: true
+    title: Discord Server
+    image: /assets/images/projects/screenshot-2026-04-12-185042.png
+    description: Ein Ort auf Discord, an dem sich meine Community und Freunde
+      treffen können.
+    link: https://discord.gg/xzWPUtNFnb
