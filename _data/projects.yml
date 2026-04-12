@@ -1,0 +1,16 @@
+projects:
+  - title: Website
+    description: Meine persönliche Website, gebaut mit Jekyll und Tailwind CSS. Minimalistisch, modern und responsiv.
+    image:
+    icon: fab fa-github
+    link: https://github.com/Yezun-hikari/Yezun-hikari/tree/web
+    link_text: Repository ansehen
+    active: true
+
+  - title: Zukünftiges Projekt
+    description: Hier wird bald ein spannendes neues Projekt zu finden sein. Bleib gespannt!
+    image:
+    icon: fas fa-code
+    link:
+    link_text: In Arbeit
+    active: false
