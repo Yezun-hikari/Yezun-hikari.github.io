@@ -54,6 +54,41 @@
             opacity: 0.6;
         }
 
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-3deg); }
+            75% { transform: rotate(3deg); }
+        }
+
+        .truck-wiggle {
+            animation: wiggle 0.5s ease-in-out infinite;
+        }
+
+        #isekai-truck {
+            transition: opacity 0.3s ease;
+        }
+
+        .truck-drive-away {
+            transition: all 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) !important;
+            transform: translateX(-200vw) !important;
+            opacity: 0 !important;
+        }
+
+        .dust-particle {
+            position: absolute;
+            background: #8e9aaf;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.6;
+            animation: dust-fade 1.5s forwards;
+            z-index: 30;
+        }
+
+        @keyframes dust-fade {
+            0% { transform: scale(1) translate(0, 0); opacity: 0.6; }
+            100% { transform: scale(3) translate(20px, -20px); opacity: 0; }
+        }
+
         .back-link {
             transition: all 0.3s ease;
             position: relative;
@@ -85,7 +120,7 @@
     <!-- Header / Navigation -->
     <header class="fixed w-full top-0 z-50 px-6 md:px-8 py-4 md:py-6 flex justify-between items-start mix-blend-difference">
         <div class="flex flex-col items-start gap-4">
-            <button id="menu-toggle" class="flex items-center gap-3 text-white hover:opacity-60 transition-all group">
+            <button id="menu-toggle" class="flex items-center gap-3 text-white transition-all group">
                 <i class="fas fa-bars text-lg"></i>
                 <span class="text-base md:text-lg font-medium tracking-widest">YEZUN</span>
             </button>
@@ -180,6 +215,58 @@
             const isCurrentlyDark = html.classList.contains('dark');
             setTheme(!isCurrentlyDark);
         });
+
+        // Isekai Truck Logic
+        const truck = document.getElementById('isekai-truck');
+        if (truck) {
+            function createDust(x, y, count = 1) {
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'dust-particle';
+                    const size = Math.random() * 8 + 4;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+
+                    // Offset to appear behind truck
+                    const offsetX = Math.random() * 20 - 10;
+                    const offsetY = Math.random() * 20 - 10;
+
+                    particle.style.left = `${x + offsetX}px`;
+                    particle.style.top = `${y + offsetY}px`;
+
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 1500);
+                }
+            }
+
+            truck.addEventListener('click', () => {
+                if (truck.classList.contains('truck-drive-away')) return;
+
+                truck.classList.add('truck-drive-away');
+
+                const rect = truck.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+
+                // Initial burst
+                createDust(centerX + 20, centerY + 10, 15);
+
+                // Continuous trail while moving
+                let trailInterval = setInterval(() => {
+                    const currentRect = truck.getBoundingClientRect();
+                    if (currentRect.left < -100) {
+                        clearInterval(trailInterval);
+                        return;
+                    }
+                    createDust(currentRect.left + currentRect.width, currentRect.top + currentRect.height - 10, 2);
+                }, 50);
+
+                setTimeout(() => {
+                    clearInterval(trailInterval);
+                    truck.style.display = 'none';
+                }, 6000);
+            });
+        }
 
         // Simple Fade-In on Load
         window.addEventListener('DOMContentLoaded', () => {
