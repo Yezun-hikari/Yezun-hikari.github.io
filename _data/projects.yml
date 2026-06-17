@@ -23,3 +23,11 @@ projects:
     description: Ein Ort auf Discord, an dem sich meine Community und Freunde
       treffen können.
     link: https://discord.gg/xzWPUtNFnb
+  - icon: fa-brands fa-github
+    link_text: Repository ansehen
+    active: true
+    title: Pixoo64 Marketplace
+    description: Ein Marketplace und Manager für Plugins, welche mit dem Pixoo64
+      kommunizieren können.
+    image: /assets/images/projects/dasdas.png
+    link: https://github.com/Yezun-hikari/Pixoo64-Marketplace
