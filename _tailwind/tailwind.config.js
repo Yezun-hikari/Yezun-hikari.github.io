@@ -5,7 +5,7 @@ module.exports = {
         extend: {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
-                serif: ['Playfair Display', 'serif'],
+                serif: ['"Times New Roman"', 'Times', 'serif'],
             },
             colors: {
                 accent: '#8e9aaf',
