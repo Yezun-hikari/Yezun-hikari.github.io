@@ -19,11 +19,12 @@ title: Projekte
         <div class="group space-y-4">
             <div class="aspect-video bg-zinc-100 dark:bg-zinc-800 rounded-sm overflow-hidden relative">
                 {% if project.image %}
-                <img src="{{ project.image }}" alt="{{ project.title }}" class="w-full h-full object-cover">
-                {% endif %}
-                <div class="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
+                <img src="{{ project.image }}" alt="{{ project.title }}" loading="lazy" class="w-full h-full object-cover">
+                {% else %}
+                <div class="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity" aria-hidden="true">
                     <i class="{{ project.icon | default: 'fas fa-code' }} text-6xl"></i>
                 </div>
+                {% endif %}
             </div>
             <div class="space-y-2">
                 <h3 class="text-xl font-serif italic tracking-wide">{{ project.title }}</h3>
@@ -32,7 +33,7 @@ title: Projekte
                 </p>
                 <div class="pt-2">
                     {% if project.active %}
-                    <a href="{{ project.link }}" target="_blank" class="back-link text-[10px] tracking-[0.3em] uppercase font-medium">{{ project.link_text | default: 'Ansehen' }}</a>
+                    <a href="{{ project.link }}" target="_blank" rel="noopener noreferrer" class="back-link text-[10px] tracking-[0.3em] uppercase font-medium">{{ project.link_text | default: 'Ansehen' }}</a>
                     {% else %}
                     <span class="text-[10px] tracking-[0.3em] uppercase font-medium opacity-30">{{ project.link_text | default: 'In Arbeit' }}</span>
                     {% endif %}
