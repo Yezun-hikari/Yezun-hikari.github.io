@@ -1,7 +1,7 @@
 backend:
   name: github
-  repo: Yezun-hikari/Yezun-hikari
-  branch: web
+  repo: Yezun-hikari/Yezun-hikari.github.io
+  branch: main
   base_url: https://yezun-auth.vercel.app
 
 media_folder: "assets/images/projects"
