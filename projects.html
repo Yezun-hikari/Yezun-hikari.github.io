@@ -16,8 +16,14 @@ title: Projekte
 
         {% for project in site.data.projects.projects %}
         <!-- Project: {{ project.title }} -->
+        {% assign clickable = false %}
+        {% if project.active and project.link %}{% assign clickable = true %}{% endif %}
         <div class="group space-y-4">
+            {% if clickable %}
+            <a href="{{ project.link }}" target="_blank" rel="noopener noreferrer" class="project-thumb aspect-video bg-zinc-100 dark:bg-zinc-800 rounded-sm overflow-hidden relative block" aria-label="{{ project.title }}: {{ project.link_text | default: 'Ansehen' }}">
+            {% else %}
             <div class="aspect-video bg-zinc-100 dark:bg-zinc-800 rounded-sm overflow-hidden relative">
+            {% endif %}
                 {% if project.image %}
                 <img src="{{ project.image }}" alt="{{ project.title }}" loading="lazy" class="w-full h-full object-cover">
                 {% else %}
@@ -25,7 +31,14 @@ title: Projekte
                     <i class="{{ project.icon | default: 'fas fa-code' }} text-6xl"></i>
                 </div>
                 {% endif %}
+                {% if clickable %}
+                <span class="project-thumb-hint" aria-hidden="true"><i class="fas fa-arrow-up-right-from-square"></i></span>
+                {% endif %}
+            {% if clickable %}
+            </a>
+            {% else %}
             </div>
+            {% endif %}
             <div class="space-y-2">
                 <h3 class="text-xl font-serif italic tracking-wide">{{ project.title }}</h3>
                 <p class="text-sm opacity-60 font-light leading-relaxed">
@@ -34,6 +47,9 @@ title: Projekte
                 <div class="pt-2">
                     {% if project.active %}
                     <a href="{{ project.link }}" target="_blank" rel="noopener noreferrer" class="back-link text-[10px] tracking-[0.3em] uppercase font-medium">{{ project.link_text | default: 'Ansehen' }}</a>
+                    {% if project.repo %}
+                    <a href="{{ project.repo }}" target="_blank" rel="noopener noreferrer" class="back-link text-[10px] tracking-[0.3em] uppercase font-medium opacity-60" style="margin-left: 1.5rem;">Repository</a>
+                    {% endif %}
                     {% else %}
                     <span class="text-[10px] tracking-[0.3em] uppercase font-medium opacity-30">{{ project.link_text | default: 'In Arbeit' }}</span>
                     {% endif %}

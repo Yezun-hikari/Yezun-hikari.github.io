@@ -26,4 +26,5 @@ collections:
               - { label: "Icon (FontAwesome Klasse)", name: "icon", widget: "string", default: "fas fa-code", hint: "Z.B. 'fab fa-github' oder 'fas fa-code'" }
               - { label: "Link URL", name: "link", widget: "string", required: false }
               - { label: "Link Text", name: "link_text", widget: "string", default: "Ansehen" }
+              - { label: "Repository URL (optional, zusätzlich zum Link)", name: "repo", widget: "string", required: false }
               - { label: "Aktiv / Veröffentlicht", name: "active", widget: "boolean", default: true }

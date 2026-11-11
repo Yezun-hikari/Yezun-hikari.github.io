@@ -31,3 +31,30 @@ projects:
       kommunizieren können.
     image: /assets/images/projects/dasdas.png
     link: https://github.com/Yezun-hikari/Pixoo64-Marketplace
+  - title: XOX
+    description: Tic-Tac-Toe auf einem 4x4-Feld mit Punkten, Räumen und Einfrieren.
+      Man kann lokal zu zweit, online mit Elo-Wertung oder gegen einen Bot spielen.
+    image: /assets/images/projects/xox.png
+    icon: fas fa-gamepad
+    link: https://yezun.de/xox/
+    link_text: Spielen
+    repo: https://github.com/Yezun-hikari/xox
+    active: true
+  - title: Handwriting
+    description: Eine Web-App, die meine Handschrift lernt und daraus aus beliebigem
+      Text eine Goodnotes-Datei mit echten Stiftstrichen macht.
+    image: /assets/images/projects/handwriting.png
+    icon: fas fa-pen-nib
+    link: https://yezun.de/handwriting/
+    link_text: Öffnen
+    repo: https://github.com/Yezun-hikari/handwriting
+    active: true
+  - title: AniWorld Downloader
+    description: Ein Tool zum Finden, Herunterladen und Anschauen von Anime, Filmen und
+      Serien, mit Web-UI, Terminal-Menü und CLI. Das Projekt ist von phoenixthrush,
+      ich bin dort Co-Autor.
+    image: /assets/images/projects/aniworld-downloader.jpg
+    icon: fab fa-github
+    link: https://github.com/phoenixthrush/AniWorld-Downloader
+    link_text: Repository ansehen
+    active: true
