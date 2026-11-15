@@ -58,3 +58,13 @@ projects:
     link: https://github.com/phoenixthrush/AniWorld-Downloader
     link_text: Repository ansehen
     active: true
+  - title: Schematic → bbmodel
+    description: Ein Web-Tool, das Minecraft-Schematics (.schem, .litematic, .nbt,
+      .schematic) in Blockbench-Modelle für Ressourcenpakete umwandelt. Wahlweise
+      mit Durchschnittsfarben und Voxel-Modus.
+    image: /assets/images/projects/schem-to-bbmodel.png
+    icon: fas fa-cube
+    link: https://yezun.de/schem-to-bbmodel/
+    link_text: Öffnen
+    repo: https://github.com/Yezun-hikari/schem-to-bbmodel
+    active: true
